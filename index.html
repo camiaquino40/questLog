@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14111c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Quest Log">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Quest Log</title>
+<style>
+  :root{
+    --bg:#14111c; --bg2:#1d1828; --bg3:#272035; --line:#332b45;
+    --text:#f3eefc; --muted:#9d93b3; --dim:#6c6383;
+    --accent:#ff6b8b; --accent2:#ffa45c; --star:#ffc44d; --ok:#5ee6a8;
+    --grad:linear-gradient(135deg,var(--accent),var(--accent2));
+    --r:14px;
+    --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--text)}
+  body{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;min-height:100dvh;
+    padding:calc(var(--safe-t) + 8px) 16px calc(var(--safe-b) + 100px);
+    background:radial-gradient(120% 60% at 100% 0%,#2a1730 0%,transparent 60%),radial-gradient(90% 50% at 0% 10%,#1b1a35 0%,transparent 60%),var(--bg);
+    background-attachment:fixed}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+  input{font:inherit;color:var(--text)}
+  .wrap{max-width:900px;margin:0 auto}
+
+  /* header */
+  header{display:flex;align-items:center;justify-content:space-between;padding:10px 0 14px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{width:36px;height:36px;border-radius:10px;background:var(--grad);display:grid;place-items:center;box-shadow:0 6px 20px -6px var(--accent)}
+  .logo svg{width:20px;height:20px;fill:#fff}
+  h1{font-family:"Space Grotesk",system-ui,sans-serif;font-size:24px;margin:0;letter-spacing:-.02em}
+  .icon-btn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--bg2);border:1px solid var(--line)}
+  .icon-btn svg{width:20px;height:20px;stroke:var(--muted);fill:none;stroke-width:2}
+
+  /* tabs */
+  .tabs{position:sticky;top:calc(var(--safe-t));z-index:5;display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;
+    background:rgba(29,24,40,.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:16px;margin-bottom:16px}
+  .tab{padding:10px;border-radius:12px;font-weight:600;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:8px;transition:.2s}
+  .tab .n{font-size:12px;background:var(--bg3);padding:2px 8px;border-radius:99px;color:var(--muted)}
+  .tab.on{background:var(--bg3);color:var(--text)}
+  .tab.on .n{background:var(--grad);color:#fff}
+
+  /* toolbar */
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 2px 14px;min-height:42px}
+  .bar .info{color:var(--muted);font-size:13px}
+  .bar .info b{color:var(--text);font-weight:600}
+  .dice-btn{display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:99px;background:var(--grad);color:#fff;font-weight:600;
+    box-shadow:0 8px 24px -10px var(--accent);transition:transform .15s}
+  .dice-btn:active{transform:scale(.95)}
+  .dice-btn svg{width:18px;height:18px}
+
+  /* grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:14px 12px}
+  @media(min-width:600px){.grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:20px 16px}}
+  .card{text-align:left;display:flex;flex-direction:column;gap:6px;animation:pop .35s ease both}
+  @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.97)}}
+  .cover{position:relative;aspect-ratio:3/4;border-radius:10px;overflow:hidden;background:var(--bg3);border:1px solid rgba(255,255,255,.06);
+    box-shadow:0 10px 24px -14px #000}
+  .cover img{width:100%;height:100%;object-fit:cover;display:block}
+  .card:active .cover{transform:scale(.97)}
+  .ph{width:100%;height:100%;display:grid;place-items:center;font-family:"Space Grotesk",sans-serif;font-size:28px;font-weight:700;color:rgba(255,255,255,.85);
+    background:linear-gradient(150deg,var(--c1,#3b2d5a),var(--c2,#1e1830))}
+  .badge{position:absolute;left:6px;top:6px;font-size:10.5px;font-weight:600;padding:3px 7px;border-radius:99px;background:rgba(20,17,28,.82);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--accent2);border:1px solid rgba(255,164,92,.35)}
+  .badge.today{background:var(--grad);color:#fff;border-color:transparent}
+  .cname{font-size:12.5px;font-weight:500;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+  .empty{text-align:center;color:var(--muted);padding:60px 20px;line-height:1.6}
+  .empty .big{font-size:44px;margin-bottom:8px}
+
+  /* stars */
+  .stars{position:relative;display:inline-flex;--s:13px;line-height:0;align-self:flex-start;width:max-content}
+  .stars .row{display:flex}
+  .stars svg{width:var(--s);height:var(--s);flex:none;fill:#3a3249}
+  .stars .fg{position:absolute;left:0;top:0;bottom:0;overflow:hidden}
+  .stars .fg svg{fill:var(--star)}
+  .stars-input{--s:42px;touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none}
+  .rate-label{font-family:"Space Grotesk",sans-serif;font-size:15px;color:var(--muted);margin-top:6px;min-height:20px}
+  .rate-label b{color:var(--star);font-size:18px}
+
+  /* FAB */
+  .fab{position:fixed;right:20px;bottom:calc(var(--safe-b) + 22px);width:60px;height:60px;border-radius:20px;background:var(--grad);display:grid;place-items:center;
+    box-shadow:0 14px 34px -10px var(--accent);z-index:10;transition:transform .15s}
+  .fab:active{transform:scale(.92)}
+  .fab svg{width:28px;height:28px;stroke:#fff;stroke-width:2.6;fill:none}
+
+  /* sheets */
+  .backdrop{position:fixed;inset:0;background:rgba(6,4,10,.6);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:20;opacity:0;pointer-events:none;transition:opacity .25s}
+  .backdrop.on{opacity:1;pointer-events:auto}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-height:92dvh;overflow:auto;background:var(--bg2);border-top:1px solid var(--line);
+    border-radius:24px 24px 0 0;padding:10px 20px calc(var(--safe-b) + 24px);transform:translateY(105%);transition:transform .32s cubic-bezier(.2,.9,.25,1);
+    max-width:640px;margin:0 auto;overscroll-behavior:contain}
+  .sheet.on{transform:none}
+  .grab{width:40px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 14px}
+  .sheet h2{font-family:"Space Grotesk",sans-serif;margin:0 0 14px;font-size:21px;letter-spacing:-.01em}
+
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--bg);border:1px solid var(--line);border-radius:12px;margin-bottom:12px}
+  .seg button{padding:8px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--muted)}
+  .seg button.on{background:var(--bg3);color:var(--text)}
+
+  .field{width:100%;padding:13px 14px;border-radius:12px;background:var(--bg);border:1px solid var(--line);outline:none;font-size:16px}
+  .field:focus{border-color:var(--accent)}
+  label.lbl{display:block;font-size:12.5px;color:var(--muted);margin:12px 0 6px}
+
+  .results{margin-top:10px;display:flex;flex-direction:column;gap:4px;min-height:40px}
+  .res{display:flex;align-items:center;gap:12px;padding:8px;border-radius:12px;text-align:left;width:100%}
+  .res:active,.res:hover{background:var(--bg3)}
+  .res img,.res .ph{width:46px;height:58px;border-radius:7px;object-fit:cover;flex:none;font-size:16px}
+  .res .t{font-weight:600;font-size:14.5px}
+  .res .m{font-size:12px;color:var(--muted);margin-top:2px}
+  .res .tag{margin-left:auto;font-size:12px;color:var(--ok);flex:none}
+  .res[disabled]{opacity:.55}
+  .msg{color:var(--muted);font-size:13.5px;padding:14px 4px;line-height:1.5}
+  .msg a{color:var(--accent)}
+  .spinner{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:18px auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border-radius:14px;font-weight:600;background:var(--bg3);border:1px solid var(--line)}
+  .btn.primary{background:var(--grad);border:0;color:#fff}
+  .btn.danger{color:#ff7d8f;background:transparent}
+  .btn:active{transform:scale(.98)}
+  .btns{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+  .btns.row{flex-direction:row}
+  .link{color:var(--accent);font-size:13.5px;font-weight:500;margin-top:12px}
+
+  /* detail */
+  .hero{position:relative;margin:-10px -20px 0;height:220px;overflow:hidden;border-radius:24px 24px 0 0}
+  .hero img{width:100%;height:100%;object-fit:cover}
+  .hero .ph{font-size:56px}
+  .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,transparent 35%,var(--bg2))}
+  .hero .grab{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:2;background:rgba(255,255,255,.45)}
+  .dtitle{font-family:"Space Grotesk",sans-serif;font-size:26px;line-height:1.1;margin:-34px 0 6px;position:relative;letter-spacing:-.02em}
+  .dmeta{color:var(--muted);font-size:13px;line-height:1.5}
+  .pill{display:inline-block;margin-top:10px;font-size:12.5px;font-weight:600;padding:5px 11px;border-radius:99px;background:rgba(255,164,92,.12);color:var(--accent2);border:1px solid rgba(255,164,92,.3)}
+  .rate-box{margin-top:18px;padding:18px;border-radius:16px;background:var(--bg);border:1px solid var(--line);text-align:center}
+  .rate-box .q{font-size:13px;color:var(--muted);margin-bottom:10px}
+  .small-links{display:flex;justify-content:center;gap:18px;margin-top:14px}
+  .small-links button{font-size:13px;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+
+  /* random */
+  .rnd{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:24px;background:rgba(10,7,16,.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    opacity:0;pointer-events:none;transition:opacity .25s}
+  .rnd.on{opacity:1;pointer-events:auto}
+  .rnd-in{width:100%;max-width:320px;text-align:center}
+  .rnd h3{font-family:"Space Grotesk",sans-serif;font-size:15px;font-weight:500;color:var(--muted);margin:0 0 18px;letter-spacing:.04em;text-transform:uppercase}
+  .rnd .cover{width:210px;margin:0 auto;border-radius:16px;transition:box-shadow .4s,transform .4s}
+  .rnd.win .cover{box-shadow:0 0 0 3px var(--star),0 0 60px -6px var(--accent);transform:scale(1.04)}
+  .rnd .rname{font-family:"Space Grotesk",sans-serif;font-size:22px;font-weight:700;margin:20px 0 4px;min-height:28px}
+  .rnd .rnote{font-size:12.5px;color:var(--dim);min-height:18px}
+  .rnd .btns{opacity:0;transition:opacity .3s;pointer-events:none}
+  .rnd.on.win .btns{opacity:1;pointer-events:auto}
+  .rnd:not(.on) *{pointer-events:none!important}
+  .confetti{position:fixed;inset:0;pointer-events:none;z-index:31;overflow:hidden}
+  .confetti i{position:absolute;top:-12px;width:8px;height:12px;border-radius:2px;animation:fall 1.6s ease-in forwards}
+  @keyframes fall{to{transform:translateY(105vh) rotate(720deg);opacity:.2}}
+
+  .toast{position:fixed;left:50%;bottom:calc(var(--safe-b) + 96px);transform:translate(-50%,20px);background:var(--text);color:var(--bg);font-weight:600;font-size:13.5px;
+    padding:10px 16px;border-radius:99px;opacity:0;transition:.25s;z-index:40;pointer-events:none;white-space:nowrap}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+  .hint{font-size:12px;color:var(--dim);line-height:1.5;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24"><path d="M7 7h10a5 5 0 0 1 4.9 6l-.8 4a3 3 0 0 1-5.2 1.3L14 16h-4l-1.9 2.3A3 3 0 0 1 2.9 17l-.8-4A5 5 0 0 1 7 7Zm1 3v1.5H6.5v1.5H8v1.5h1.5V13H11v-1.5H9.5V10H8Zm8.25 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/></svg></div>
+      <h1>Quest Log</h1>
+    </div>
+    <button class="icon-btn" id="settingsBtn" aria-label="Ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab on" data-tab="wish">Por jugar <span class="n" id="nWish">0</span></button>
+    <button class="tab" data-tab="played">Jugados <span class="n" id="nPlayed">0</span></button>
+  </nav>
+
+  <div class="bar" id="bar"></div>
+  <main class="grid" id="grid"></main>
+</div>
+
+<button class="fab" id="fab" aria-label="Agregar juego"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg></button>
+
+<div class="backdrop" id="backdrop"></div>
+
+<!-- Agregar -->
+<section class="sheet" id="addSheet">
+  <div class="grab"></div>
+  <h2>Agregar juego</h2>
+  <div class="seg" id="addMode">
+    <button class="on" data-mode="wish">A “Por jugar”</button>
+    <button data-mode="played">Ya lo jugué</button>
+  </div>
+  <input class="field" id="search" type="search" placeholder="Buscá un juego… (ej: Witchbrook)" autocomplete="off" enterkeyhint="search">
+  <div class="results" id="results"></div>
+  <button class="link" id="manualToggle">¿No aparece? Agregalo a mano →</button>
+  <form id="manualForm" hidden>
+    <label class="lbl">Nombre</label>
+    <input class="field" id="mName" required placeholder="Nombre del juego">
+    <label class="lbl">Link de la portada (opcional)</label>
+    <input class="field" id="mCover" type="url" placeholder="https://…jpg">
+    <label class="lbl">Fecha de salida (opcional)</label>
+    <input class="field" id="mDate" type="date">
+    <div class="btns"><button class="btn primary" type="submit">Agregar</button></div>
+  </form>
+</section>
+
+<!-- Detalle -->
+<section class="sheet" id="detailSheet"></section>
+
+<!-- Ajustes -->
+<section class="sheet" id="settingsSheet">
+  <div class="grab"></div>
+  <h2>Ajustes</h2>
+  <label class="lbl">API key de RAWG (para buscar portadas)</label>
+  <input class="field" id="keyInput" placeholder="Pegá tu key acá" autocomplete="off" spellcheck="false">
+  <p class="hint">Es gratis: creá una cuenta en <a style="color:var(--accent)" href="https://rawg.io/apidocs" target="_blank" rel="noopener">rawg.io/apidocs</a> y copiá la key. Se guarda solo en este dispositivo.</p>
+  <div class="btns"><button class="btn primary" id="saveKey">Guardar key</button></div>
+  <label class="lbl" style="margin-top:24px">Copia de seguridad</label>
+  <div class="btns row" style="margin-top:0">
+    <button class="btn" id="exportBtn">Exportar</button>
+    <button class="btn" id="importBtn">Importar</button>
+  </div>
+  <p class="hint">Tus juegos se guardan en el celular. Exportá de vez en cuando por si cambiás de teléfono o borrás datos del navegador.</p>
+  <input type="file" id="importFile" accept="application/json,.json" hidden>
+</section>
+
+<!-- Random -->
+<div class="rnd" id="rnd">
+  <div class="rnd-in">
+    <h3 id="rndTitle">Eligiendo…</h3>
+    <div class="cover" id="rndCover"></div>
+    <div class="rname" id="rndName"></div>
+    <div class="rnote" id="rndNote"></div>
+    <div class="btns row">
+      <button class="btn" id="rndAgain">Otra vez</button>
+      <button class="btn primary" id="rndOk">¡Dale!</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- estado ---------- */
+const LS_GAMES = 'questlog.games.v1', LS_KEY = 'questlog.rawgKey';
+const $ = s => document.querySelector(s);
+let games = load();
+let tab = 'wish';
+let addMode = 'wish';
+
+function load(){ try { return JSON.parse(localStorage.getItem(LS_GAMES)) || []; } catch { return []; } }
+function save(){ try { localStorage.setItem(LS_GAMES, JSON.stringify(games)); } catch(e){ toast('No se pudo guardar 😕'); } }
+function getKey(){ try { return localStorage.getItem(LS_KEY) || ''; } catch { return ''; } }
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- helpers ---------- */
+function img(url, w = 420){
+  if (!url) return '';
+  return url.replace('/media/games/', `/media/resize/${w}/-/games/`).replace('/media/screenshots/', `/media/resize/${w}/-/screenshots/`);
+}
+function initials(name){ return name.split(/\s+/).filter(w => /[A-Za-z0-9]/.test(w[0])).slice(0,2).map(w => w[0].toUpperCase()).join('') || '?'; }
+function hue(name){ let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
+function placeholder(name){
+  const h = hue(name);
+  return `<div class="ph" style="--c1:hsl(${h} 45% 34%);--c2:hsl(${(h+50)%360} 40% 16%)">${esc(initials(name))}</div>`;
+}
+function coverHTML(g, w){
+  return g.cover ? `<img src="${esc(img(g.cover, w))}" alt="" loading="lazy" onerror="this.outerHTML=placeholder(${esc(JSON.stringify(g.name))})">` : placeholder(g.name);
+}
+function daysUntil(dateStr){
+  if (!dateStr) return null;
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const rel = new Date(y, m-1, d), now = new Date(); now.setHours(0,0,0,0);
+  return Math.round((rel - now) / 86400000);
+}
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function fmtDate(dateStr){ const [y,m,d] = dateStr.split('-').map(Number); return `${d} ${MESES[m-1]} ${y}`; }
+function releaseLabel(g){
+  if (g.tba) return 'Sin fecha';
+  const n = daysUntil(g.released);
+  if (n === null || n < 0) return null;
+  if (n === 0) return '¡Sale hoy!';
+  if (n === 1) return 'Sale mañana';
+  if (n <= 45) return `En ${n} días`;
+  return fmtDate(g.released);
+}
+const isUpcoming = g => g.tba || (daysUntil(g.released) ?? -1) > 0;
+
+const STAR = '<svg viewBox="0 0 24 24"><path d="M12 2.6l2.85 5.9 6.5.85-4.75 4.5 1.2 6.45L12 17.2l-5.8 3.1 1.2-6.45-4.75-4.5 6.5-.85z"/></svg>';
+function starsHTML(v, size){
+  const row = STAR.repeat(5);
+  return `<span class="stars" ${size ? `style="--s:${size}px"` : ''}><span class="row">${row}</span><span class="fg" style="width:${(v/5)*100}%"><span class="row">${row}</span></span></span>`;
+}
+function fmtRating(v){ return v ? `<b>${String(v).replace('.', ',')}</b> / 5` : 'Tocá o deslizá para puntuar'; }
+
+/* ---------- render ---------- */
+function render(){
+  const wish = games.filter(g => g.status === 'wish');
+  const played = games.filter(g => g.status === 'played');
+  $('#nWish').textContent = wish.length;
+  $('#nPlayed').textContent = played.length;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
+
+  const bar = $('#bar'), grid = $('#grid');
+  let list;
+  if (tab === 'wish'){
+    // primero los que ya salieron, después los próximos por fecha
+    list = [...wish].sort((a,b) => {
+      const ua = isUpcoming(a), ub = isUpcoming(b);
+      if (ua !== ub) return ua ? 1 : -1;
+      if (ua && ub) return (a.tba?1:0) - (b.tba?1:0) || String(a.released).localeCompare(String(b.released));
+      return a.addedAt - b.addedAt;
+    });
+    const soon = wish.filter(isUpcoming).length;
+    bar.innerHTML = wish.length
+      ? `<span class="info"><b>${wish.length}</b> en la lista${soon ? ` · ${soon} por salir` : ''}</span>
+         <button class="dice-btn" id="randomBtn"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.3" fill="#fff"/><circle cx="15.5" cy="15.5" r="1.3" fill="#fff"/><circle cx="12" cy="12" r="1.3" fill="#fff"/></svg>Random</button>`
+      : '';
+    if (wish.length) $('#randomBtn').onclick = pickRandom;
+  } else {
+    list = [...played].sort((a,b) => (b.playedAt||0) - (a.playedAt||0));
+    const rated = played.filter(g => g.rating);
+    const avg = rated.length ? (rated.reduce((s,g) => s + g.rating, 0) / rated.length) : 0;
+    bar.innerHTML = played.length
+      ? `<span class="info"><b>${played.length}</b> jugados${rated.length ? ` · promedio <b style="color:var(--star)">${avg.toFixed(1).replace('.', ',')}★</b>` : ''}</span>`
+      : '';
+  }
+
+  if (!list.length){
+    grid.innerHTML = tab === 'wish'
+      ? `<div class="empty" style="grid-column:1/-1"><div class="big">🎮</div>Tu lista está vacía.<br>Tocá <b>+</b> para sumar el primer juego.</div>`
+      : `<div class="empty" style="grid-column:1/-1"><div class="big">⭐</div>Todavía no marcaste ninguno como jugado.<br>Abrí un juego de “Por jugar” y tocá <b>Ya lo jugué</b>.</div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map((g, i) => {
+    const rl = tab === 'wish' ? releaseLabel(g) : null;
+    return `<button class="card" data-id="${g.id}" style="animation-delay:${Math.min(i,20)*25}ms">
+      <div class="cover">${coverHTML(g, 420)}${rl ? `<span class="badge ${daysUntil(g.released)===0?'today':''}">${rl}</span>` : ''}</div>
+      <div class="cname">${esc(g.name)}</div>
+      ${tab === 'played' && g.rating ? starsHTML(g.rating) : ''}
+    </button>`;
+  }).join('');
+  grid.querySelectorAll('.card').forEach(c => c.onclick = () => openDetail(c.dataset.id));
+}
+
+/* ---------- sheets ---------- */
+let openSheetEl = null;
+function openSheet(el){
+  if (openSheetEl && openSheetEl !== el) openSheetEl.classList.remove('on');
+  openSheetEl = el; el.classList.add('on'); $('#backdrop').classList.add('on');
+  el.scrollTop = 0;
+}
+function closeSheet(){
+  if (openSheetEl) openSheetEl.classList.remove('on');
+  openSheetEl = null; $('#backdrop').classList.remove('on');
+}
+$('#backdrop').onclick = closeSheet;
+// deslizar hacia abajo para cerrar
+document.querySelectorAll('.sheet').forEach(sh => {
+  let y0 = null;
+  sh.addEventListener('touchstart', e => { y0 = sh.scrollTop <= 0 ? e.touches[0].clientY : null; }, {passive:true});
+  sh.addEventListener('touchmove', e => {
+    if (y0 === null || e.target.closest('.stars-input')) return;
+    const dy = e.touches[0].clientY - y0;
+    if (dy > 0) sh.style.transform = `translateY(${dy}px)`;
+  }, {passive:true});
+  sh.addEventListener('touchend', e => {
+    if (y0 === null) return;
+    const dy = e.changedTouches[0].clientY - y0; sh.style.transform = ''; y0 = null;
+    if (dy > 110) closeSheet();
+  });
+});
+
+/* ---------- agregar ---------- */
+$('#fab').onclick = () => {
+  setAddMode(tab === 'played' ? 'played' : 'wish');
+  $('#search').value = ''; $('#manualForm').hidden = true;
+  renderSearchHint();
+  openSheet($('#addSheet'));
+  setTimeout(() => $('#search').focus(), 320);
+};
+function setAddMode(m){ addMode = m; document.querySelectorAll('#addMode button').forEach(b => b.classList.toggle('on', b.dataset.mode === m)); }
+document.querySelectorAll('#addMode button').forEach(b => b.onclick = () => setAddMode(b.dataset.mode));
+
+function renderSearchHint(){
+  $('#results').innerHTML = getKey()
+    ? ''
+    : `<div class="msg">Para buscar juegos con portada necesitás una API key gratis de RAWG. <a href="#" id="goSettings">Configurala en Ajustes</a>. Mientras tanto, podés agregarlos a mano.</div>`;
+  const gs = $('#goSettings'); if (gs) gs.onclick = e => { e.preventDefault(); openSettings(); };
+}
+
+let searchTimer, searchCtrl;
+$('#search').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  const q = $('#search').value.trim();
+  if (q.length < 2){ renderSearchHint(); return; }
+  searchTimer = setTimeout(() => doSearch(q), 380);
+});
+$('#search').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#search').blur(); } });
+
+async function doSearch(q){
+  const key = getKey();
+  if (!key){ renderSearchHint(); return; }
+  searchCtrl?.abort(); searchCtrl = new AbortController();
+  $('#results').innerHTML = '<div class="spinner"></div>';
+  try {
+    const url = `https://api.rawg.io/api/games?key=${encodeURIComponent(key)}&search=${encodeURIComponent(q)}&page_size=12&search_precise=true`;
+    const res = await fetch(url, {signal: searchCtrl.signal});
+    if (res.status === 401 || res.status === 403) throw new Error('key');
+    if (!res.ok) throw new Error('net');
+    const data = await res.json();
+    showResults(data.results || []);
+  } catch (e){
+    if (e.name === 'AbortError') return;
+    $('#results').innerHTML = `<div class="msg">${e.message === 'key' ? 'La API key no funciona. Revisala en Ajustes.' : 'No pude conectarme. ¿Tenés internet?'}</div>`;
+  }
+}
+
+function showResults(items){
+  if (!items.length){ $('#results').innerHTML = '<div class="msg">No encontré nada. Probá con otro nombre o agregalo a mano.</div>'; return; }
+  $('#results').innerHTML = items.map((r, i) => {
+    const has = games.find(g => g.rawgId === r.id);
+    const year = r.tba ? 'Sin fecha' : (r.released ? r.released.slice(0,4) : '');
+    const plats = (r.parent_platforms || []).map(p => p.platform.name).slice(0,3).join(' · ');
+    return `<button class="res" data-i="${i}" ${has ? 'disabled' : ''}>
+      ${r.background_image ? `<img src="${esc(img(r.background_image, 200))}" alt="" loading="lazy">` : placeholder(r.name)}
+      <div><div class="t">${esc(r.name)}</div><div class="m">${esc([year, plats].filter(Boolean).join(' — '))}</div></div>
+      ${has ? '<span class="tag">✓ Ya está</span>' : ''}
+    </button>`;
+  }).join('');
+  $('#results').querySelectorAll('.res:not([disabled])').forEach(b => b.onclick = () => {
+    const r = items[+b.dataset.i];
+    addGame({
+      rawgId: r.id, name: r.name, cover: r.background_image || '',
+      released: r.released || null, tba: !!r.tba,
+      platforms: (r.parent_platforms || []).map(p => p.platform.name)
+    });
+  });
+}
+
+$('#manualToggle').onclick = () => { $('#manualForm').hidden = !$('#manualForm').hidden; if (!$('#manualForm').hidden) $('#mName').focus(); };
+$('#manualForm').onsubmit = e => {
+  e.preventDefault();
+  const name = $('#mName').value.trim(); if (!name) return;
+  addGame({ name, cover: $('#mCover').value.trim(), released: $('#mDate').value || null, tba: false, platforms: [] });
+  $('#manualForm').reset();
+};
+
+function addGame(data){
+  const g = { id: uid(), rawgId: null, addedAt: Date.now(), rating: 0, ...data, status: addMode };
+  if (addMode === 'played') g.playedAt = Date.now();
+  games.push(g); save();
+  tab = addMode; render();
+  if (addMode === 'played'){ openDetail(g.id, true); }
+  else { closeSheet(); toast(`“${g.name}” agregado`); }
+}
+
+/* ---------- estrellas (input con medias) ---------- */
+function starInput(initial, onChange){
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `<div style="display:inline-block">${starsHTML(initial, 42)}</div><div class="rate-label">${fmtRating(initial)}</div>`;
+  const stars = wrap.querySelector('.stars'); stars.classList.add('stars-input');
+  const fg = stars.querySelector('.fg'), label = wrap.querySelector('.rate-label');
+  let val = initial, dragging = false, start = initial;
+  const fromX = x => {
+    const r = stars.getBoundingClientRect();
+    return Math.min(5, Math.max(0.5, Math.ceil(((x - r.left) / r.width) * 10) / 2));
+  };
+  const show = v => { fg.style.width = (v/5*100) + '%'; label.innerHTML = fmtRating(v); };
+  stars.addEventListener('pointerdown', e => { dragging = true; start = val; stars.setPointerCapture(e.pointerId); val = fromX(e.clientX); show(val); });
+  stars.addEventListener('pointermove', e => { if (dragging){ val = fromX(e.clientX); show(val); } });
+  const end = () => {
+    if (!dragging) return; dragging = false;
+    show(val); onChange(val);
+    navigator.vibrate?.(8);
+  };
+  stars.addEventListener('pointerup', end); stars.addEventListener('pointercancel', end);
+  wrap.set = v => { val = v; show(v); };
+  return wrap;
+}
+
+/* ---------- detalle ---------- */
+function openDetail(id, askRating = false){
+  const g = games.find(x => x.id === id); if (!g) return;
+  const sh = $('#detailSheet');
+  const year = g.released ? fmtDate(g.released) : (g.tba ? 'Sin fecha confirmada' : '');
+  const rl = g.status === 'wish' ? releaseLabel(g) : null;
+  sh.innerHTML = `
+    <div class="hero">${g.cover ? `<img src="${esc(img(g.cover, 840))}" alt="" onerror="this.outerHTML=placeholder(${esc(JSON.stringify(g.name))})">` : placeholder(g.name)}<div class="grab"></div></div>
+    <div class="dtitle">${esc(g.name)}</div>
+    <div class="dmeta">${esc([year, (g.platforms||[]).join(' · ')].filter(Boolean).join(' — '))}</div>
+    ${rl ? `<span class="pill">${rl}</span>` : ''}
+    <div id="dBody"></div>
+    <div class="small-links"><button id="dCover">Cambiar portada</button><button id="dDel">Eliminar</button></div>`;
+  const body = sh.querySelector('#dBody');
+
+  if (g.status === 'played'){
+    const box = document.createElement('div'); box.className = 'rate-box';
+    box.innerHTML = `<div class="q">${askRating ? '¿Qué te pareció?' : 'Tu puntaje'}</div>`;
+    box.appendChild(starInput(g.rating || 0, v => { g.rating = v; save(); render(); }));
+    if (g.playedAt) box.insertAdjacentHTML('beforeend', `<div class="hint">Jugado el ${new Date(g.playedAt).toLocaleDateString('es-AR', {day:'numeric', month:'long', year:'numeric'})}</div>`);
+    body.appendChild(box);
+    body.insertAdjacentHTML('beforeend', `<div class="btns">${askRating ? '<button class="btn primary" id="dDone">Listo</button>' : ''}<button class="btn" id="dBack">Volver a “Por jugar”</button></div>`);
+    sh.querySelector('#dBack').onclick = () => { g.status = 'wish'; delete g.playedAt; save(); tab = 'wish'; render(); closeSheet(); toast('Volvió a “Por jugar”'); };
+    const done = sh.querySelector('#dDone'); if (done) done.onclick = () => { closeSheet(); toast('Guardado en Jugados ⭐'); };
+  } else {
+    body.innerHTML = `<div class="btns"><button class="btn primary" id="dPlayed">⭐ Ya lo jugué</button></div>`;
+    sh.querySelector('#dPlayed').onclick = () => {
+      let pending = 0;
+      body.innerHTML = '';
+      const box = document.createElement('div'); box.className = 'rate-box';
+      box.innerHTML = `<div class="q">¿Qué te pareció?</div>`;
+      box.appendChild(starInput(0, v => pending = v));
+      body.appendChild(box);
+      body.insertAdjacentHTML('beforeend', `<div class="btns"><button class="btn primary" id="dSave">Guardar en Jugados</button></div>`);
+      sh.querySelector('#dSave').onclick = () => {
+        g.status = 'played'; g.playedAt = Date.now(); g.rating = pending; save();
+        tab = 'played'; render(); closeSheet(); toast('Pasó a Jugados ⭐');
+      };
+    };
+  }
+
+  sh.querySelector('#dDel').onclick = () => {
+    if (!confirm(`¿Eliminar “${g.name}”?`)) return;
+    games = games.filter(x => x.id !== g.id); save(); render(); closeSheet(); toast('Eliminado');
+  };
+  sh.querySelector('#dCover').onclick = () => {
+    const u = prompt('Pegá el link de una imagen para la portada (dejalo vacío para quitarla):', g.cover || '');
+    if (u === null) return;
+    g.cover = u.trim(); save(); render(); openDetail(g.id);
+  };
+  openSheet(sh);
+}
+
+/* ---------- random ---------- */
+let spinning = false;
+function pickRandom(){
+  if (spinning) return;
+  const wish = games.filter(g => g.status === 'wish');
+  if (!wish.length) return;
+  const released = wish.filter(g => !isUpcoming(g));
+  const pool = released.length ? released : wish;
+  const winner = pool[Math.floor(Math.random() * pool.length)];
+  const rnd = $('#rnd'), cov = $('#rndCover'), nm = $('#rndName');
+  rnd.classList.remove('win'); rnd.classList.add('on');
+  $('#rndTitle').textContent = 'Eligiendo…';
+  $('#rndNote').textContent = (released.length && released.length < wish.length) ? 'Solo entre los que ya salieron' : '';
+  spinning = true;
+
+  const steps = 18; let i = 0, last = null;
+  const tick = () => {
+    let g;
+    if (i >= steps) g = winner;
+    else { do { g = pool[Math.floor(Math.random() * pool.length)]; } while (pool.length > 1 && g === last); }
+    last = g;
+    cov.innerHTML = coverHTML(g, 420); nm.textContent = g.name;
+    if (i >= steps){
+      spinning = false;
+      rnd.classList.add('win');
+      $('#rndTitle').textContent = 'Tu próximo juego es…';
+      navigator.vibrate?.([20, 40, 30]);
+      confetti();
+      return;
+    }
+    i++;
+    setTimeout(tick, 40 + Math.pow(i / steps, 3) * 300);
+  };
+  tick();
+}
+$('#rndAgain').onclick = pickRandom;
+$('#rndOk').onclick = () => $('#rnd').classList.remove('on', 'win');
+function confetti(){
+  const box = document.createElement('div'); box.className = 'confetti';
+  const cols = ['#ff6b8b','#ffa45c','#ffc44d','#5ee6a8','#8ab4ff','#c58cff'];
+  for (let k = 0; k < 60; k++){
+    const p = document.createElement('i');
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.background = cols[k % cols.length];
+    p.style.animationDelay = Math.random() * .4 + 's';
+    p.style.animationDuration = 1.2 + Math.random() * 1 + 's';
+    box.appendChild(p);
+  }
+  document.body.appendChild(box); setTimeout(() => box.remove(), 2800);
+}
+
+/* ---------- ajustes ---------- */
+function openSettings(){ $('#keyInput').value = getKey(); openSheet($('#settingsSheet')); }
+$('#settingsBtn').onclick = openSettings;
+$('#saveKey').onclick = () => {
+  try { localStorage.setItem(LS_KEY, $('#keyInput').value.trim()); } catch {}
+  closeSheet(); toast('Key guardada ✓');
+};
+$('#exportBtn').onclick = async () => {
+  const json = JSON.stringify({ app: 'questlog', version: 1, exportedAt: new Date().toISOString(), games }, null, 2);
+  const name = `questlog-backup-${new Date().toISOString().slice(0,10)}.json`;
+  const file = new File([json], name, { type: 'application/json' });
+  if (navigator.canShare?.({ files: [file] })){
+    try { await navigator.share({ files: [file], title: 'Backup Quest Log' }); return; } catch (e){ if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
+$('#importBtn').onclick = () => $('#importFile').click();
+$('#importFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    const list = Array.isArray(data) ? data : data.games;
+    if (!Array.isArray(list)) throw 0;
+    if (!confirm(`Importar ${list.length} juegos? Se van a reemplazar los actuales.`)) return;
+    games = list; save(); render(); closeSheet(); toast('Backup importado ✓');
+  } catch { toast('Ese archivo no es un backup válido'); }
+  e.target.value = '';
+};
+
+/* ---------- tabs / toast / init ---------- */
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => { tab = t.dataset.tab; render(); window.scrollTo({top:0, behavior:'smooth'}); });
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2200); }
+
+render();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
