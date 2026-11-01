@@ -223,11 +223,7 @@
 <section class="sheet" id="settingsSheet">
   <div class="grab"></div>
   <h2>Ajustes</h2>
-  <label class="lbl">API key de RAWG (para buscar portadas)</label>
-  <input class="field" id="keyInput" placeholder="Pegá tu key acá" autocomplete="off" spellcheck="false">
-  <p class="hint">Es gratis: creá una cuenta en <a style="color:var(--accent)" href="https://rawg.io/apidocs" target="_blank" rel="noopener">rawg.io/apidocs</a> y copiá la key. Se guarda solo en este dispositivo.</p>
-  <div class="btns"><button class="btn primary" id="saveKey">Guardar key</button></div>
-  <label class="lbl" style="margin-top:24px">Copia de seguridad</label>
+<label class="lbl" >Copia de seguridad</label>
   <div class="btns row" style="margin-top:0">
     <button class="btn" id="exportBtn">Exportar</button>
     <button class="btn" id="importBtn">Importar</button>
@@ -254,7 +250,7 @@
 
 <script>
 /* ---------- estado ---------- */
-const LS_GAMES = 'questlog.games.v1', LS_KEY = 'questlog.rawgKey';
+const LS_GAMES = 'questlog.games.v1';
 const $ = s => document.querySelector(s);
 let games = load();
 let tab = 'wish';
@@ -262,7 +258,6 @@ let addMode = 'wish';
 
 function load(){ try { return JSON.parse(localStorage.getItem(LS_GAMES)) || []; } catch { return []; } }
 function save(){ try { localStorage.setItem(LS_GAMES, JSON.stringify(games)); } catch(e){ toast('No se pudo guardar 😕'); } }
-function getKey(){ try { return localStorage.getItem(LS_KEY) || ''; } catch { return ''; } }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -397,10 +392,7 @@ function setAddMode(m){ addMode = m; document.querySelectorAll('#addMode button'
 document.querySelectorAll('#addMode button').forEach(b => b.onclick = () => setAddMode(b.dataset.mode));
 
 function renderSearchHint(){
-  $('#results').innerHTML = getKey()
-    ? ''
-    : `<div class="msg">Para buscar juegos con portada necesitás una API key gratis de RAWG. <a href="#" id="goSettings">Configurala en Ajustes</a>. Mientras tanto, podés agregarlos a mano.</div>`;
-  const gs = $('#goSettings'); if (gs) gs.onclick = e => { e.preventDefault(); openSettings(); };
+  $('#results').innerHTML = `<div class="msg">Escribí el nombre del juego (en inglés suele encontrar mejor). Las portadas salen de Wikipedia.</div>`;
 }
 
 let searchTimer, searchCtrl;
@@ -408,48 +400,79 @@ $('#search').addEventListener('input', () => {
   clearTimeout(searchTimer);
   const q = $('#search').value.trim();
   if (q.length < 2){ renderSearchHint(); return; }
-  searchTimer = setTimeout(() => doSearch(q), 380);
+  searchTimer = setTimeout(() => doSearch(q), 400);
 });
 $('#search').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#search').blur(); } });
 
+const WP = 'https://en.wikipedia.org/w/api.php?';
+async function wikiSearch(query, signal){
+  const params = new URLSearchParams({
+    action: 'query', format: 'json', origin: '*',
+    generator: 'search', gsrsearch: query, gsrlimit: '12', gsrnamespace: '0',
+    prop: 'pageimages|description|pageprops', ppprop: 'wikibase_item',
+    piprop: 'thumbnail', pithumbsize: '500', pilicense: 'any'
+  });
+  const res = await fetch(WP + params, { signal });
+  if (!res.ok) throw new Error('net');
+  const data = await res.json();
+  return Object.values(data.query?.pages || {}).sort((a, b) => a.index - b.index);
+}
+
 async function doSearch(q){
-  const key = getKey();
-  if (!key){ renderSearchHint(); return; }
   searchCtrl?.abort(); searchCtrl = new AbortController();
   $('#results').innerHTML = '<div class="spinner"></div>';
   try {
-    const url = `https://api.rawg.io/api/games?key=${encodeURIComponent(key)}&search=${encodeURIComponent(q)}&page_size=12&search_precise=true`;
-    const res = await fetch(url, {signal: searchCtrl.signal});
-    if (res.status === 401 || res.status === 403) throw new Error('key');
-    if (!res.ok) throw new Error('net');
-    const data = await res.json();
-    showResults(data.results || []);
+    // primero solo artículos de videojuegos; si no hay nada, búsqueda más amplia
+    let items = await wikiSearch(`${q} hastemplate:"Infobox video game"`, searchCtrl.signal);
+    if (!items.length) items = await wikiSearch(`${q} video game`, searchCtrl.signal);
+    showResults(items);
   } catch (e){
     if (e.name === 'AbortError') return;
-    $('#results').innerHTML = `<div class="msg">${e.message === 'key' ? 'La API key no funciona. Revisala en Ajustes.' : 'No pude conectarme. ¿Tenés internet?'}</div>`;
+    $('#results').innerHTML = `<div class="msg">No pude conectarme. ¿Tenés internet?</div>`;
   }
 }
 
 function showResults(items){
-  if (!items.length){ $('#results').innerHTML = '<div class="msg">No encontré nada. Probá con otro nombre o agregalo a mano.</div>'; return; }
+  if (!items.length){ $('#results').innerHTML = '<div class="msg">No encontré nada. Probá con el nombre en inglés o agregalo a mano.</div>'; return; }
   $('#results').innerHTML = items.map((r, i) => {
-    const has = games.find(g => g.rawgId === r.id);
-    const year = r.tba ? 'Sin fecha' : (r.released ? r.released.slice(0,4) : '');
-    const plats = (r.parent_platforms || []).map(p => p.platform.name).slice(0,3).join(' · ');
+    const name = cleanTitle(r.title);
+    const has = games.find(g => g.wikiId === r.pageid || g.name.toLowerCase() === name.toLowerCase());
+    const cover = r.thumbnail?.source;
     return `<button class="res" data-i="${i}" ${has ? 'disabled' : ''}>
-      ${r.background_image ? `<img src="${esc(img(r.background_image, 200))}" alt="" loading="lazy">` : placeholder(r.name)}
-      <div><div class="t">${esc(r.name)}</div><div class="m">${esc([year, plats].filter(Boolean).join(' — '))}</div></div>
+      ${cover ? `<img src="${esc(cover)}" alt="" loading="lazy">` : placeholder(name)}
+      <div><div class="t">${esc(name)}</div><div class="m">${esc(r.description || '')}</div></div>
       ${has ? '<span class="tag">✓ Ya está</span>' : ''}
     </button>`;
   }).join('');
   $('#results').querySelectorAll('.res:not([disabled])').forEach(b => b.onclick = () => {
     const r = items[+b.dataset.i];
-    addGame({
-      rawgId: r.id, name: r.name, cover: r.background_image || '',
-      released: r.released || null, tba: !!r.tba,
-      platforms: (r.parent_platforms || []).map(p => p.platform.name)
+    const g = addGame({
+      wikiId: r.pageid, name: cleanTitle(r.title), cover: r.thumbnail?.source || '',
+      desc: r.description || '', released: null, tba: /upcoming|unreleased/i.test(r.description || ''), platforms: []
     });
+    const qid = r.pageprops?.wikibase_item;
+    if (qid) fillRelease(g, qid);
   });
+}
+// "Celeste (video game)" -> "Celeste"
+function cleanTitle(t){ return t.replace(/\s*\((\d{4} )?video game\)$/i, ''); }
+
+// Busca la fecha de salida en Wikidata (la más temprana) y la guarda
+async function fillRelease(g, qid){
+  try {
+    const res = await fetch(`https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${qid}&props=claims&format=json&origin=*`);
+    const data = await res.json();
+    const claims = data.entities?.[qid]?.claims?.P577 || [];
+    const vals = claims.map(c => c.mainsnak?.datavalue?.value).filter(Boolean);
+    const days = vals.filter(v => v.precision >= 11).map(v => v.time.slice(1, 11)).sort();
+    if (days.length){ g.released = days[0]; g.tba = false; }
+    else if (vals.length){
+      const y = Math.min(...vals.map(v => parseInt(v.time.slice(1, 5))));
+      if (y > new Date().getFullYear()) g.tba = true;
+      else if (y) g.year = y;
+    }
+    save(); render();
+  } catch {}
 }
 
 $('#manualToggle').onclick = () => { $('#manualForm').hidden = !$('#manualForm').hidden; if (!$('#manualForm').hidden) $('#mName').focus(); };
@@ -461,12 +484,13 @@ $('#manualForm').onsubmit = e => {
 };
 
 function addGame(data){
-  const g = { id: uid(), rawgId: null, addedAt: Date.now(), rating: 0, ...data, status: addMode };
+  const g = { id: uid(), addedAt: Date.now(), rating: 0, ...data, status: addMode };
   if (addMode === 'played') g.playedAt = Date.now();
   games.push(g); save();
   tab = addMode; render();
   if (addMode === 'played'){ openDetail(g.id, true); }
   else { closeSheet(); toast(`“${g.name}” agregado`); }
+  return g;
 }
 
 /* ---------- estrellas (input con medias) ---------- */
@@ -497,15 +521,15 @@ function starInput(initial, onChange){
 function openDetail(id, askRating = false){
   const g = games.find(x => x.id === id); if (!g) return;
   const sh = $('#detailSheet');
-  const year = g.released ? fmtDate(g.released) : (g.tba ? 'Sin fecha confirmada' : '');
+  const year = g.released ? fmtDate(g.released) : (g.tba ? 'Sin fecha confirmada' : (g.year || ''));
   const rl = g.status === 'wish' ? releaseLabel(g) : null;
   sh.innerHTML = `
     <div class="hero">${g.cover ? `<img src="${esc(img(g.cover, 840))}" alt="" onerror="this.outerHTML=placeholder(${esc(JSON.stringify(g.name))})">` : placeholder(g.name)}<div class="grab"></div></div>
     <div class="dtitle">${esc(g.name)}</div>
-    <div class="dmeta">${esc([year, (g.platforms||[]).join(' · ')].filter(Boolean).join(' — '))}</div>
+    <div class="dmeta">${esc([year, g.desc || (g.platforms||[]).join(' · ')].filter(Boolean).join(' — '))}</div>
     ${rl ? `<span class="pill">${rl}</span>` : ''}
     <div id="dBody"></div>
-    <div class="small-links"><button id="dCover">Cambiar portada</button><button id="dDel">Eliminar</button></div>`;
+    <div class="small-links"><button id="dCover">Cambiar portada</button><button id="dDate">Cambiar fecha</button><button id="dDel">Eliminar</button></div>`;
   const body = sh.querySelector('#dBody');
 
   if (g.status === 'played'){
@@ -537,6 +561,16 @@ function openDetail(id, askRating = false){
   sh.querySelector('#dDel').onclick = () => {
     if (!confirm(`¿Eliminar “${g.name}”?`)) return;
     games = games.filter(x => x.id !== g.id); save(); render(); closeSheet(); toast('Eliminado');
+  };
+  sh.querySelector('#dDate').onclick = () => {
+    const cur = g.released ? g.released.split('-').reverse().join('/') : '';
+    const u = prompt('Fecha de salida (dd/mm/aaaa). Dejalo vacío si todavía no tiene fecha:', cur);
+    if (u === null) return;
+    const m = u.trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+    if (u.trim() && !m) return toast('Usá el formato dd/mm/aaaa');
+    if (m){ g.released = `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; g.tba = false; }
+    else { g.released = null; g.tba = true; }
+    save(); render(); openDetail(g.id);
   };
   sh.querySelector('#dCover').onclick = () => {
     const u = prompt('Pegá el link de una imagen para la portada (dejalo vacío para quitarla):', g.cover || '');
@@ -598,12 +632,8 @@ function confetti(){
 }
 
 /* ---------- ajustes ---------- */
-function openSettings(){ $('#keyInput').value = getKey(); openSheet($('#settingsSheet')); }
+function openSettings(){ openSheet($('#settingsSheet')); }
 $('#settingsBtn').onclick = openSettings;
-$('#saveKey').onclick = () => {
-  try { localStorage.setItem(LS_KEY, $('#keyInput').value.trim()); } catch {}
-  closeSheet(); toast('Key guardada ✓');
-};
 $('#exportBtn').onclick = async () => {
   const json = JSON.stringify({ app: 'questlog', version: 1, exportedAt: new Date().toISOString(), games }, null, 2);
   const name = `questlog-backup-${new Date().toISOString().slice(0,10)}.json`;

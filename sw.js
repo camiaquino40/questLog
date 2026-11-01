@@ -1,5 +1,5 @@
 // Service worker: hace que la app abra rápido y funcione sin internet.
-const CACHE = 'questlog-v1';
+const CACHE = 'questlog-v2';
 const IMG_CACHE = 'questlog-img';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
@@ -24,10 +24,10 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
 
   // Búsquedas en la API: siempre a internet
-  if (url.hostname === 'api.rawg.io') return;
+  if (url.hostname.endsWith('wikipedia.org') || url.hostname.endsWith('wikidata.org')) return;
 
-  // Portadas de RAWG: se guardan para verlas sin internet
-  if (url.hostname.endsWith('rawg.io')) {
+  // Portadas (Wikipedia): se guardan para verlas sin internet
+  if (url.hostname === 'upload.wikimedia.org') {
     e.respondWith(caches.open(IMG_CACHE).then(async c => {
       const hit = await c.match(req);
       if (hit) return hit;
